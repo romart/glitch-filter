@@ -101,8 +101,10 @@ types, genuine flat gray areas, and glitches thinner than the supported bands
 can be misclassified. Natural black/white letterboxing is excluded from the gray
 fill rule; entirely black images are not necessarily identified as corrupt.
 
-The supplied collection has 609 good and 191 bad photos. Good samples are from
-January and bad samples mostly from August, with different construction stages.
+The corrected collection has 610 good and 190 bad photos. The user confirmed
+`yaros_20250826103411.jpg` is good; it was moved from `images/bad/` to
+`images/good/`. Good samples are mostly from January and bad samples mostly from
+August, with different construction stages.
 Date grouping prevents adjacent frames from crossing splits but cannot remove
 that seasonal class confound. Near duplicates across different days are not
 automatically detected unless their bytes are identical. Add intact and glitched
@@ -111,7 +113,7 @@ images from overlapping dates and other cameras before claiming broad accuracy.
 The detector was revised during development after inspecting the first evaluation
 and training failures. The saved test results are therefore development results,
 not a fresh blind benchmark. See [RESULTS.md](RESULTS.md) for counts and known
-misses. A pretrained neural classifier remains a possible later comparison if
+review cases. A pretrained neural classifier remains a possible later comparison if
 new defect families require it; GPU training must be explicitly requested.
 
 ## Checks

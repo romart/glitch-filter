@@ -34,6 +34,14 @@ without commits or code.
 - Use `images/good/` and `images/bad/` as the labeled dataset. The user's reference
   to `image/bad/` means the existing `images/bad/` directory.
 - Initial inventory: 609 good JPEGs and 191 bad JPEGs; no byte-identical duplicates.
+- Corrected inventory: 610 good and 190 bad. The user verified
+  `yaros_20250826103411.jpg` is good; it was moved to `images/good/`. It is a
+  confirmed correct acceptance, not a detector miss. Updated results catch all
+  190 bad images, with one good image sent to review and no good rejections.
+- The row-repetition profile is vectorized with per-row integer prefix sums.
+  This preserves original float32 mean rounding and all 800 scores exactly.
+  Measured scoring time dropped from ~32 ms to ~1.5 ms per image; CPU decoding
+  is now the main bottleneck. See `RESULTS.md` for benchmark scope and details.
 - All good images and 189 bad images are 1920x1080; two bad images are 1280x720.
 - `images/bad/img.jpg`: corruption in the lower portion.
 - `images/bad/yaros_20250422150642.jpg`: essentially the whole image is glitched.

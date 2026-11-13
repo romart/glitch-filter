@@ -56,19 +56,22 @@ def decode(path: Path) -> np.ndarray:
 
 def repetition_profile(gray: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Ratios across 8-row bands; flat sky is excluded by a texture floor."""
-    a = gray.astype(np.float32)
+    a = gray.astype(np.int16)
     starts = np.arange(0, len(a) - 7, 4)
-    values = []
-    for y in starts:
-        band = a[y:y + 8]
-        segments = np.array_split(band, 4, axis=1)
-        ratios = []
-        for segment in segments:
-            dx = float(np.abs(np.diff(segment, axis=1)).mean())
-            dy = float(np.abs(np.diff(segment, axis=0)).mean())
-            ratios.append(dx / (dy + 0.025) if dx >= 0.1 else 0.0)
-        values.append(float(np.median(ratios)))
-    values = np.asarray(values)
+    ratios = []
+    for segment in np.array_split(a, 4, axis=1):
+        # Compute each pixel difference once, then reuse integer prefix sums for
+        # overlapping bands. This removes the Python loop over individual bands.
+        horizontal = np.abs(np.diff(segment, axis=1)).sum(axis=1, dtype=np.int64)
+        vertical = np.abs(np.diff(segment, axis=0)).sum(axis=1, dtype=np.int64)
+        hx = np.concatenate(([0], np.cumsum(horizontal)))
+        vy = np.concatenate(([0], np.cumsum(vertical)))
+        # Preserve the float32 mean rounding used by the original algorithm;
+        # thresholds and cached scores remain compatible with detector v3.
+        dx = ((hx[starts + 8] - hx[starts]) / (8 * (segment.shape[1] - 1))).astype(np.float32).astype(float)
+        dy = ((vy[starts + 7] - vy[starts]) / (7 * segment.shape[1])).astype(np.float32).astype(float)
+        ratios.append(np.where(dx >= 0.1, dx / (dy + 0.025), 0.0))
+    values = np.median(np.stack(ratios, axis=1), axis=1)
     # Require three overlapping windows (16 rows), suppressing isolated edges.
     persistent = np.minimum.reduce([values[:-2], values[1:-1], values[2:]])
     return starts[:len(persistent)], persistent
