@@ -11,10 +11,29 @@ Use Python 3.10 or later and install FFmpeg through your operating system's pack
 manager (`sudo apt install ffmpeg` on Debian/Ubuntu). Then, from this repository:
 
 ```sh
+./install.sh
+source .venv/bin/activate
+photo-filter --help
+```
+
+The installer creates or reuses `.venv`, installs the package and Python
+dependencies, and checks the CLI version. It needs network access when
+dependencies are not cached. It does not install system packages, calibrate the
+detector, process photos, or start training. Use `./install.sh --help` for details;
+set `PHOTO_FILTER_PYTHON=/path/to/python` to select a Python executable. On
+Debian/Ubuntu, install `python3-venv` if virtual environment creation fails.
+
+The equivalent manual setup is:
+
+```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/photo-filter --help
+source .venv/bin/activate
+photo-filter --help
 ```
+
+Keep the environment active for the commands below. Without activation, use
+`.venv/bin/python` in place of `python3`, or `.venv/bin/photo-filter` for the CLI.
 
 If your current Python already has NumPy and FFmpeg is on PATH, all commands also
 work directly as `python3 -m photo_filter ...` without installing the package.

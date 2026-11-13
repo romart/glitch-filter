@@ -10,10 +10,17 @@ The implementation uses CPU NumPy and FFmpeg only; do not initialize a GPU or
 start GPU training without a new explicit request. The repository started
 without commits or code.
 
+The user requests that each completed change be committed. Commit coherent code
+and documentation changes after relevant checks; keep reference images and
+generated artifacts out of commits unless explicitly requested.
+
 ## Implemented workflow
 
 - Package: `photo_filter/`, configured by `pyproject.toml`; Python >=3.10, NumPy,
   and the external FFmpeg executable. No torch dependency.
+- `./install.sh` checks Python/FFmpeg, creates or reuses `.venv`, and installs
+  the CLI. It does not run calibration, sort photos, or start training. Activate
+  `.venv/bin/activate` before using the README's `python3` commands.
 - `python3 -m photo_filter audit images` produces a scored manifest with seeded
   capture-day splits and linked exact duplicates; `calibrate MANIFEST` selects
   thresholds from validation samples only; `evaluate MANIFEST --model MODEL`
