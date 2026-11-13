@@ -56,6 +56,16 @@ need at least three independent groups per class. The default seed is 42; use
 `--seed` to change it and `--workers 1` to limit decoding concurrency. The default
 is two workers, with FFmpeg restricted to CPU decoding and one thread per worker.
 
+`audit` and `sort` show progress automatically in a terminal: completed images,
+percentage, images per second, elapsed time, and estimated time remaining for
+each phase. Indexing/discovery show a count until the total is known. Sorting
+tracks scoring and copying/moving separately; dry-run only discovers and scores.
+Progress goes to stderr and refreshes at most once per second, so stdout remains
+valid JSON/JSONL. Use `--progress always` for periodic lines in redirected logs,
+or `--no-progress` (equivalently `--progress never`) to disable it. The default
+`--progress auto` suppresses progress when stderr is redirected. Final summaries
+and errors are still printed.
+
 `calibrate` selects two thresholds using **validation samples only** and saves a
 small JSON configuration. No neural model is trained. Below the lower threshold
 is `good`, at or above the upper threshold is `bad`, and the interval between is
@@ -143,6 +153,7 @@ python3 -m unittest discover -s tests -v
 
 Tests cover streak and gray-fill detection, calibration boundaries and isolation
 from test scores, grouped splits, conflicting labels, dry-run, copying, moving,
-collision prevention, failures, output exclusion, and symlink escapes. Generated
+collision prevention, failures, output exclusion, symlink escapes, progress
+updates/interruption, and JSON output isolation. Generated
 manifests, configurations, reports, sorted copies, and build products are ignored
 by git. The reference image collection is not added to git automatically.

@@ -30,6 +30,10 @@ generated artifacts out of commits unless explicitly requested.
   explicitly enables removal after successful copy. Existing destinations and
   reports are rejected, relative paths are preserved, and nested output trees
   are excluded from discovery.
+- Audit/sort progress defaults to terminal-only stderr output. `--progress always`
+  enables periodic lines in logs; `--no-progress` disables tracking output.
+  Track phases separately and preserve machine-readable stdout and dry-run's
+  guarantee of no filesystem writes.
 - See `README.md` for setup and full commands, `RESULTS.md` for measured results,
   and ignored `artifacts/` for local manifests, configuration, and sample output.
 - Run `python3 -m unittest discover -s tests -v` for meaningful behavior checks.

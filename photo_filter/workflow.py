@@ -11,10 +11,10 @@ from pathlib import Path
 import random
 import re
 import shutil
-import sys
 import tempfile
 
 from .detector import DETECTOR_VERSION, EXTENSIONS, DecodeError, detect
+from .progress import Progress
 
 SCHEMA_VERSION = 1
 
@@ -99,15 +99,17 @@ def assign_splits(rows, seed):
                 raise ValueError(f"Grouped split has no {label} {split} samples; choose another seed or add sessions")
 
 
-def audit(dataset: Path, seed: int, workers: int):
+def audit(dataset: Path, seed: int, workers: int, *, progress=False):
     rows = []
-    for label in ("good", "bad"):
-        if not (dataset / label).is_dir():
-            raise ValueError(f"Missing labeled directory: {dataset / label}")
-        for path in discover(dataset / label):
-            rows.append({"path": path.relative_to(dataset.resolve()).as_posix(), "label": label,
-                         "group": capture_group(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                         "bytes": path.stat().st_size})
+    with Progress("Indexing", enabled=progress) as tracker:
+        for label in ("good", "bad"):
+            if not (dataset / label).is_dir():
+                raise ValueError(f"Missing labeled directory: {dataset / label}")
+            for path in discover(dataset / label):
+                rows.append({"path": path.relative_to(dataset.resolve()).as_posix(), "label": label,
+                             "group": capture_group(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                             "bytes": path.stat().st_size})
+                tracker.advance()
     if not rows:
         raise ValueError("No supported images found")
     assign_splits(rows, seed)
@@ -119,11 +121,10 @@ def audit(dataset: Path, seed: int, workers: int):
             return {**row, "score": None, "error": str(exc)}
 
     inspected = []
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        for i, row in enumerate(pool.map(inspect, rows), 1):
+    with Progress("Auditing", len(rows), enabled=progress) as tracker, ThreadPoolExecutor(max_workers=workers) as pool:
+        for row in pool.map(inspect, rows):
             inspected.append(row)
-            if i % 100 == 0 or i == len(rows):
-                print(f"Audited {i}/{len(rows)}", file=sys.stderr)
+            tracker.advance()
     return {"schema_version": SCHEMA_VERSION, "detector_version": DETECTOR_VERSION,
             "dataset": str(dataset.resolve()), "seed": seed,
             "split_strategy": "seeded capture-day groups; exact duplicates linked; approximate 60/20/20 by group",
@@ -221,29 +222,34 @@ def copy_exclusive(source: Path, destination: Path):
         raise
 
 
-def sort_images(source: Path, output: Path, model, *, dry_run=False, move=False, report: Path | None = None):
+def sort_images(source: Path, output: Path, model, *, dry_run=False, move=False, report: Path | None = None,
+                progress=False):
     source, output = source.resolve(), output.resolve()
     if not source.is_dir():
         raise ValueError(f"Input is not a directory: {source}")
     if source.is_relative_to(output):
         raise ValueError("Output must not equal or contain the input directory")
-    paths = list(discover(source, exclude=output))
+    paths = []
+    with Progress("Discovering", enabled=progress) as tracker:
+        for path in discover(source, exclude=output):
+            paths.append(path)
+            tracker.advance()
     if not paths:
         raise ValueError("No supported images found")
     rows = []
-    for i, path in enumerate(paths, 1):
-        try:
-            detection = asdict(detect(path, model["bad_threshold"]))
-            error = None
-        except DecodeError as exc:
-            detection, error = {"score": None, "onset_fraction": None}, str(exc)
-        decision = decide(detection["score"], model)
-        destination = output / decision / path.relative_to(source)
-        rows.append({"source": str(path), "destination": str(destination), **detection,
-                     "decision": decision, "error": error, "model_id": model["model_id"],
-                     "status": "planned"})
-        if i % 100 == 0:
-            print(f"Scored {i}/{len(paths)}", file=sys.stderr)
+    with Progress("Scoring", len(paths), enabled=progress) as tracker:
+        for path in paths:
+            try:
+                detection = asdict(detect(path, model["bad_threshold"]))
+                error = None
+            except DecodeError as exc:
+                detection, error = {"score": None, "onset_fraction": None}, str(exc)
+            decision = decide(detection["score"], model)
+            destination = output / decision / path.relative_to(source)
+            rows.append({"source": str(path), "destination": str(destination), **detection,
+                         "decision": decision, "error": error, "model_id": model["model_id"],
+                         "status": "planned"})
+            tracker.advance()
     report = report.resolve() if report else output / "report.jsonl"
     # Preflight every target before creating directories or copying any photo.
     targets = [Path(r["destination"]) for r in rows] + [report]
@@ -261,7 +267,7 @@ def sort_images(source: Path, output: Path, model, *, dry_run=False, move=False,
         return rows
     report.parent.mkdir(parents=True, exist_ok=True)
     # Record per-file progress so interrupted runs retain an audit trail.
-    with report.open("x") as handle:
+    with report.open("x") as handle, Progress("Moving" if move else "Copying", len(rows), enabled=progress) as tracker:
         for row in rows:
             src, dst = Path(row["source"]), Path(row["destination"])
             try:
@@ -274,4 +280,5 @@ def sort_images(source: Path, output: Path, model, *, dry_run=False, move=False,
                 row["status"], row["operation_error"] = "failed", str(exc)
             handle.write(json.dumps(row, allow_nan=False) + "\n")
             handle.flush()
+            tracker.advance()
     return rows

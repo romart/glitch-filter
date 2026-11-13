@@ -18,6 +18,7 @@ def parser():
     p.add_argument("--output", type=Path, default=Path("artifacts/manifest.json"))
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--workers", type=int, choices=range(1, 9), default=2)
+    progress_options(p)
     p = commands.add_parser("calibrate", help="Select thresholds using validation samples only")
     p.add_argument("manifest", type=Path)
     p.add_argument("--output", type=Path, default=Path("artifacts/detector.json"))
@@ -33,15 +34,25 @@ def parser():
     p.add_argument("--report", type=Path, help="JSONL report, defaults to OUTPUT/report.jsonl")
     p.add_argument("--dry-run", action="store_true", help="Print planned JSONL to stdout; write no files")
     p.add_argument("--move", action="store_true", help="Remove each source only after a successful copy")
+    progress_options(p)
     return root
+
+
+def progress_options(command):
+    command.add_argument("--progress", choices=["auto", "always", "never"], default="auto",
+                         help="Progress on stderr: auto for terminals, always for logs, never to disable")
+    command.add_argument("--no-progress", dest="progress", action="store_const", const="never",
+                         help="Disable progress output")
 
 
 def main(argv=None):
     args = parser().parse_args(argv)
+    mode = getattr(args, "progress", "never")
+    progress = mode == "always" or (mode == "auto" and sys.stderr.isatty())
     try:
         if args.command == "audit":
             require_decoder()
-            manifest = audit(args.dataset, args.seed, args.workers)
+            manifest = audit(args.dataset, args.seed, args.workers, progress=progress)
             write_json(args.output, manifest)
             counts = Counter((r["split"], r["label"]) for r in manifest["samples"])
             print(json.dumps({f"{s}/{l}": n for (s, l), n in sorted(counts.items())}, indent=2))
@@ -57,7 +68,7 @@ def main(argv=None):
         elif args.command == "sort":
             require_decoder()
             rows = sort_images(args.input, args.output, load_model(args.model),
-                               dry_run=args.dry_run, move=args.move, report=args.report)
+                               dry_run=args.dry_run, move=args.move, report=args.report, progress=progress)
             if args.dry_run:
                 for row in rows:
                     print(json.dumps(row, allow_nan=False))
