@@ -25,11 +25,16 @@ generated artifacts out of commits unless explicitly requested.
   capture-day splits and linked exact duplicates; `calibrate MANIFEST` selects
   thresholds from validation samples only; `evaluate MANIFEST --model MODEL`
   reports decisions on a chosen split (test by default).
-- `python3 -m photo_filter sort INPUT --output OUTPUT --model MODEL` copies
+- The calibrated `photo_filter/models/detector.json` is committed and included as
+  package data. Sort/evaluate use it by default; `--model MODEL` overrides it.
+  A fresh installation can sort immediately without calibration or artifacts/.
+- `python3 -m photo_filter sort INPUT --output OUTPUT` copies
   images with a JSONL operation report. `--dry-run` writes nothing; `--move`
   explicitly enables removal after successful copy. Existing destinations and
   reports are rejected, relative paths are preserved, and nested output trees
   are excluded from discovery.
+- Output directories are created after scoring and collision checks, when copying
+  starts. Dry-run creates nothing; CLI status messages explain the selected mode.
 - Audit/sort progress defaults to terminal-only stderr output. `--progress always`
   enables periodic lines in logs; `--no-progress` disables tracking output.
   Track phases separately and preserve machine-readable stdout and dry-run's

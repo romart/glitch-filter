@@ -8,6 +8,8 @@ from . import __version__
 from .detector import require_decoder
 from .workflow import audit, calibrate, evaluate, load_manifest, load_model, sort_images, write_json
 
+DEFAULT_MODEL = Path(__file__).with_name("models") / "detector.json"
+
 
 def parser():
     root = argparse.ArgumentParser(description="CPU-only vertical-smear detector and photo sorter")
@@ -24,13 +26,15 @@ def parser():
     p.add_argument("--output", type=Path, default=Path("artifacts/detector.json"))
     p = commands.add_parser("evaluate", help="Evaluate saved scores on one split")
     p.add_argument("manifest", type=Path)
-    p.add_argument("--model", type=Path, required=True)
+    p.add_argument("--model", type=Path, default=DEFAULT_MODEL,
+                   help="Detector JSON (default: bundled calibrated detector)")
     p.add_argument("--split", choices=["train", "validation", "test"], default="test")
     p.add_argument("--output", type=Path, default=Path("artifacts/evaluation.json"))
     p = commands.add_parser("sort", help="Score and copy images into decision directories")
     p.add_argument("input", type=Path)
     p.add_argument("--output", type=Path, required=True)
-    p.add_argument("--model", type=Path, required=True)
+    p.add_argument("--model", type=Path, default=DEFAULT_MODEL,
+                   help="Detector JSON (default: bundled calibrated detector)")
     p.add_argument("--report", type=Path, help="JSONL report, defaults to OUTPUT/report.jsonl")
     p.add_argument("--dry-run", action="store_true", help="Print planned JSONL to stdout; write no files")
     p.add_argument("--move", action="store_true", help="Remove each source only after a successful copy")
@@ -67,12 +71,20 @@ def main(argv=None):
             print(json.dumps({k: v for k, v in report.items() if k != "samples"}, indent=2))
         elif args.command == "sort":
             require_decoder()
-            rows = sort_images(args.input, args.output, load_model(args.model),
+            model = load_model(args.model)
+            if args.dry_run:
+                print("Dry run: no files or output directory will be created. Remove --dry-run to copy photos.",
+                      file=sys.stderr)
+            else:
+                print(f"Output will be created after scoring and collision checks: {args.output.resolve()}",
+                      file=sys.stderr)
+            rows = sort_images(args.input, args.output, model,
                                dry_run=args.dry_run, move=args.move, report=args.report, progress=progress)
             if args.dry_run:
                 for row in rows:
                     print(json.dumps(row, allow_nan=False))
-            print(json.dumps({"count": len(rows), "decisions": dict(Counter(r["decision"] for r in rows)),
+            print(json.dumps({"count": len(rows), "dry_run": args.dry_run, "output": str(args.output.resolve()),
+                              "decisions": dict(Counter(r["decision"] for r in rows)),
                               "statuses": dict(Counter(r["status"] for r in rows))}), file=sys.stderr)
             if any(r["status"] == "failed" for r in rows):
                 return 1

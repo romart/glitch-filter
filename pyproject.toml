@@ -14,3 +14,6 @@ photo-filter = "photo_filter.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["photo_filter*"]
+
+[tool.setuptools.package-data]
+photo_filter = ["models/*.json"]

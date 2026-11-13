@@ -38,9 +38,25 @@ Keep the environment active for the commands below. Without activation, use
 If your current Python already has NumPy and FFmpeg is on PATH, all commands also
 work directly as `python3 -m photo_filter ...` without installing the package.
 
+## Quick start
+
+The calibrated detector is committed at `photo_filter/models/detector.json` and
+included in installed packages. Sorting uses it by default, so calibration and
+`--model` are optional. After installing and activating the environment, copy
+photos into a new output directory with:
+
+```sh
+photo-filter sort /path/to/photos --output /path/to/sorted
+```
+
+The command scans subdirectories, shows progress, preserves the originals, and
+writes classified copies plus `report.jsonl`. Use `--model /path/to/detector.json`
+to select a custom detector. The bundled default works from any working directory.
+
 ## Prepare and evaluate a detector
 
-The reference collection is `images/good/` and `images/bad/`. Run:
+To recalibrate instead of using the bundled detector, the reference collection
+is `images/good/` and `images/bad/`. Run:
 
 ```sh
 python3 -m photo_filter audit images --output artifacts/manifest.json
@@ -83,15 +99,22 @@ Rerun the audit after changing the dataset or detector version.
 Preview decisions without creating any files, including a report:
 
 ```sh
-python3 -m photo_filter sort /path/to/incoming --output /path/to/sorted --model artifacts/detector.json --dry-run
+photo-filter sort /path/to/incoming --output /path/to/sorted --dry-run
 ```
 
 The preview prints one JSON object per image to stdout and a summary to stderr.
 When satisfied, copy the photos and save `sorted/report.jsonl`:
 
 ```sh
-python3 -m photo_filter sort /path/to/incoming --output /path/to/sorted --model artifacts/detector.json
+photo-filter sort /path/to/incoming --output /path/to/sorted
 ```
+
+`--dry-run` intentionally creates no output directory, photos, or report. In a
+normal run, the output directory is created **after scoring and collision checks
+finish**, when copying starts. It can therefore be absent while scoring is still
+in progress. The CLI prints the selected mode and output location. A missing
+input, no supported images, or a failed collision check exits with an error before
+creating output. Only decision subdirectories that receive files are created.
 
 For example, `incoming/day1/photo.jpg` becomes
 `sorted/bad/day1/photo.jpg` when classified as bad. Relative paths are preserved.

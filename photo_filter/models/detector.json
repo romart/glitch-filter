@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "detector_version": "row-repetition-v3",
+  "good_threshold": 6.992009899894483,
+  "bad_threshold": 9.534558954401568,
+  "calibration": {
+    "split": "validation",
+    "good_count": 121,
+    "bad_count": 7,
+    "max_good_score": 6.356372636267712,
+    "min_bad_score": 294.3641087794567
+  },
+  "manifest_sha256": "1fbdd4186d01f70d7cd8c2fc1aeccbd1d46a1525d6d30947e053b1cf3e6d2fe8",
+  "score_description": "row-repetition ratio; larger indicates vertical smearing; not a probability",
+  "model_id": "b84c865600103b12"
+}
